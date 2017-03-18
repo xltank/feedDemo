@@ -1,0 +1,7 @@
+{
+  "mongoConfig":{
+    "url": "mongodb://localhost/feedTest"
+  },
+  "feedCount": 5,
+  "apiUrl": "http://localhost:3000"
+}

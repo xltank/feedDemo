@@ -1,0 +1,64 @@
+/**
+ * Created by JasonXu on 2017/3/18.
+ */
+"use strict";
+
+let should = require('should'),
+    Topic = require("../mongo").Topic,
+    Promise = require('bluebird'),
+    request = require('request');
+
+let data = [
+    {title: "title 1", createdAt: 1489840200000, updatedAt: 1489840201000},
+    {title: "title 2", createdAt: 1489840200000, updatedAt: 1489840202000},
+    {title: "title 3", createdAt: 1489840200000, updatedAt: 1489840203000},
+    {title: "title 4", createdAt: 1489840200000, updatedAt: 1489840204000},
+    {title: "title 5", createdAt: 1489840200000, updatedAt: 1489840205000},
+    {title: "title 6", createdAt: 1489840200000, updatedAt: 1489840206000},
+    {title: "title 7", createdAt: 1489840200000, updatedAt: 1489840207000},
+    {title: "title 8", createdAt: 1489840200000, updatedAt: 1489840208000},
+    {title: "title 9", createdAt: 1489840200000, updatedAt: 1489840209000},
+    {title: "title 10", createdAt: 1489840200000, updatedAt: 1489840210000},
+    {title: "title 11", createdAt: 1489840200000, updatedAt: 1489840211000}
+];
+
+let url_1st_latest = "http://localhost:3000/topics/feed?lastTime=1489840211000", // result: 6,5,4,3,2
+    url_3rd_latest = "http://localhost:3000/topics/feed?lastTime=1489840209000", // result: 11,10,4,3,2
+    url_5th_latest = "http://localhost:3000/topics/feed?lastTime=1489840207000", // result: 11,10,9,8,2
+    url_7th_latest = "http://localhost:3000/topics/feed?lastTime=1489840205000", // result: 11,10,9,8,7
+    url_10th_latest = "http://localhost:3000/topics/feed?lastTime=1489840202000"; // result: 11,10.9,8,7
+
+describe("Test topic feed", function(){
+
+    before(function(done){
+        Topic.deleteMany({})
+            .then(function(r){
+                return Topic.insertMany(data)
+                    .then(function(r){
+                        done();
+                    });
+            });
+    });
+
+    testUrl(url_1st_latest, 5);
+    testUrl(url_3rd_latest, 5);
+    testUrl(url_5th_latest, 5);
+    testUrl(url_7th_latest, 5);
+    testUrl(url_10th_latest, 5);
+});
+
+function testUrl(url, num){
+    describe("request "+url, ()=>{
+        it("should get "+num+" item", done => {
+            request(url, (err, result)=>{
+                if(err)
+                    return done(err);
+                let body = JSON.parse(result.body);
+                console.log(body);
+                console.log('----------\n');
+                should(body.data.length).be.exactly(num);
+                done();
+            })
+        });
+    })
+}
