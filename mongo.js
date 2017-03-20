@@ -16,6 +16,8 @@ let mongo = require('mongoose'),
     config = require('config'),
     Promise = require('bluebird');
 
+mongo.Promise = Promise;
+
 let db = mongo.connect(config.mongoConfig.url);
 mongo.set("debug", true);
 
@@ -34,11 +36,22 @@ let TopicObj = {
     createdAt: {type: Date, default: Date.now},
     updatedAt: {type: Date, default: Date.now}
 };
-
 let TopicSchema = new mongo.Schema(TopicObj);
 let Topic = mongo.model("Topic", TopicSchema);
 
+
+let UserObj = {
+    name: {type: String},
+    subscribed: [{type: mongo.Schema.Types.ObjectId, ref: "Topic"}],
+    createdAt: {type: Date, default: Date.now},
+    updatedAt: {type: Date, default: Date.now}
+};
+let UserSchema = new mongo.Schema(UserObj);
+let User = mongo.model("User", UserSchema);
+
+
 module.exports = {
     db: db,
-    Topic: Topic
+    Topic: Topic,
+    User: User
 };

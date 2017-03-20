@@ -7,38 +7,35 @@ let router = require('express').Router(),
     errors = require('../errors'),
     feedCount = require('config').feedCount,
     apiUrl = require('config').apiUrl,
-    Topic = require("../mongo").Topic,
+    mongo = require('../mongo'),
+    Topic = mongo.Topic,
+    User = mongo.User,
     Promise = require('bluebird');
 
 let feedUrlPattern = apiUrl + "/topics/feed?lastTime={lastTime}";
 
 /**
- * /topics/feed?lastTime=1489826541409&count=5
+ * /topics/feed?time=*&count=7
  */
 router.get('/feed', getFeed);
 
 function getFeed(req, res, next){
     let count = req.query.count ? req.query.count : feedCount;
-    let lastTime = req.query.lastTime;
-    lastTime = lastTime && lastTime.length == 13 ? new Date(parseInt(lastTime)) : Date.now(); // quietly use Date.now() when lastTime is invalid/illegal.
-    return Topic.find({updatedAt: {$gt: lastTime}}).limit(count).sort({updatedAt: -1}).exec()
-        .then(function(latest){
-            let gap = Math.max(count - latest.length, 0);
-            if(gap > 0){
-                return Topic.find({}).skip(latest.length+count).limit(gap).sort({updatedAt: -1}).exec()
-                    .then(function(old){
-                        return latest.concat(old);
-                    })
-            }
-            return latest;
+    let time = req.query.time || Date.now();
+    time = time && time.length == 13 ? new Date(parseInt(time)) : Date.now(); // quietly use Date.now() when time is invalid/illegal.
+
+    User.findOne({_id: req.user.id})
+        .then((user) => {
+            let subscribed = user.subscribed;
+            return Topic.find({_id: {$nin: subscribed}, updatedAt: {$gt: time}}).limit(count).sort({updatedAt: -1}).exec()
         })
         .then(function(r){
             let data = {
-                data: r,
-                refreshUrl: feedUrlPattern.replace('{lastTime}', ''+Date.now())
+                data: r
             };
             next(data);
         })
+
 }
 
 

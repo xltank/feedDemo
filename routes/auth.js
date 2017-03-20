@@ -3,10 +3,21 @@
  */
 "use strict";
 
+let User = require("../mongo").User;
+let errors = require("../errors");
+
 /**
 * auth midware, based on cookie or token in queryString or token in HTTP Header.
 */
 module.exports = function(req, res, next){
-    req.user = {id: "", name: "", preference: ["tag1", "tag2"]};
-    next();
+    let name = "Jason";
+    User.findOne({name: "Jason"}).exec()
+        .then((r)=>{
+            if(r){
+                req.user = {id: r._id, name: r.name};
+                next();
+            }else{
+                next(new errors.BadRequest("User not found."))
+            }
+    });
 }
