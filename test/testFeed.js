@@ -51,6 +51,7 @@ let cases = [
     {index: 15, subscribed: [], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(15).getTime(), results: [19, 18, 17, 16, 15, 14, 13]},
     {index: 10, subscribed: [], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(10).getTime(), results: [19, 18, 17, 16, 15, 14, 13]},
     {index: 20, subscribed: [18], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(20).getTime(), results: [19, 17, 16, 15, 14, 13, 12]},
+    {index: 20, subscribed: [19, 18, 17, 16, 15, 14, 13], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(20).getTime(), results: [12, 11, 10, 9, 8, 7, 6]},
     {index: 17, subscribed: [16, 15, 14], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(17).getTime(), results: [19, 18, 17, 13, 12, 11, 10]},
 ];
 
@@ -68,7 +69,6 @@ describe("Test topic feed", function() {
         .then((r) => {
             topics = r;
             done();
-            console.log("--- before() done.")
         })
     });
 
@@ -78,10 +78,8 @@ describe("Test topic feed", function() {
             .then(() => {
                 let subs = [];
                 for(let s of c.subscribed){
-                    console.log(s);
                     subs.push(topics[s]._doc._id);
                 }
-                console.log(subs);
                 return User.create({name: "Jason", subscribed: subs});
             })
             .then(()=>{
@@ -89,8 +87,6 @@ describe("Test topic feed", function() {
             })
             .then((result) => {
                 let data = JSON.parse(result.body).data;
-                console.log(data);
-                console.log('----------\n');
                 should(data.length).be.exactly(c.resultCount);
                 for(let i=0; i< data.length; i++){
                     should(data[i].title).be.exactly("Topic "+c.results[i]);
