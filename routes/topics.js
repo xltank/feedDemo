@@ -16,6 +16,9 @@ let feedUrlPattern = apiUrl + "/topics/feed?lastTime={lastTime}";
 
 /**
  * /topics/feed?time=*&count=7
+ * Get top[count] topics, excludes those user subscribed.
+ * @time to override/simulate request time.
+ * @count pagination count.
  */
 router.get('/feed', getFeed);
 
