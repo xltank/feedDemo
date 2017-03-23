@@ -2,7 +2,17 @@
 
 测试思路：
 生成一个长度为20的数组，每条记录之间的时间间隔为1秒，任取其中的几个位置（index）来模拟不同时点的请求。
-正确的结果应为：按 topic 的 updatedAt 的倒序排序后的记录数中，取 n + subscribedNum 条记录，然后去除用户订阅的记录。
+正确的结果应为：按 topic 的 updatedAt 的倒序排序，去除用户订阅的记录，limit(n)。
+
+
+mongodb：
+
+User Schema: {_id: ObjectId(***), subscribed: [ObjectId(***), ...]}
+Topic Schema: {_id: ObjectId(***), title: ***, createdAt: Date(), updatedAt: Date()}
+
+subscribed = User.find({_id: ObjectId(userId)});
+Topic.find({_id: {$nin: subscribed}, updatedAt: {$gt: time}}).limit(count).sort({updatedAt: -1});
+
 
 1，count >= 0 && count < n, 返回记录数：count；
 2, count >= n，返回记录数：n；
