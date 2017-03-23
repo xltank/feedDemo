@@ -16,10 +16,10 @@ let recordNum = 0;
 
 /**
  * Get Date delayed by pointer * 1000ms, based on the time when this test runs.
- *  @timeIndex integer, how many seconds the date should be delayed.
+ *  @index integer, sequence in top-n list.
  * */
-let getDate = (timeIndex=0) =>{
-    return new Date(baseTime + timeIndex * 1000);
+let getDate = (index=0) =>{
+    return new Date(baseTime - index * 1000);
 };
 
 /**
@@ -34,35 +34,34 @@ let genData = (num) => {
     return data;
 };
 
-let url = "http://localhost:3000/topics/feed";
+let baseUrl = "http://localhost:3000/topics/feed?time=";
 
 /**
  * It's basically a top-n problem, so we generate a [0 - 19] list, and use the index to generate request url to simulate
  * requests at different time point.
  * [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
- * when index=20, there is no new topic.
- * when index=15, 4 new topics: 16 - 19
- * when index=10, 9 new topics: 11 - 19
- * when index=20, user subscribed topic 18, no new topic, but topic 18 should be removed from result
- * when index=17, user subscribed topics[14, 15, 16], 2 new topics[18, 19], and topics[14, 15, 16] should be removed from result.
+ * when index=0, there is no new topic.
+ * when index=5, 5 new topics: 0 - 4
+ * when index=10, 10 new topics: 0 - 9, result=[0-6]
+ * when index=0, user subscribed topic 2, no new topic, but topic 18 should be removed from result
+ * when index=3, user subscribed topics[14, 15, 16], 2 new topics[18, 19], and topics[14, 15, 16] should be removed from result.
  * */
 let cases = [
-    {index: 20, subscribed: [], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(20).getTime(), results: [19, 18, 17, 16, 15, 14, 13]},
-    {index: 15, subscribed: [], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(15).getTime(), results: [19, 18, 17, 16, 15, 14, 13]},
-    {index: 10, subscribed: [], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(10).getTime(), results: [19, 18, 17, 16, 15, 14, 13]},
-    {index: 20, subscribed: [18], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(20).getTime(), results: [19, 17, 16, 15, 14, 13, 12]},
-    {index: 20, subscribed: [19, 18, 17, 16, 15, 14, 13], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(20).getTime(), results: [12, 11, 10, 9, 8, 7, 6]},
-    {index: 17, subscribed: [16, 15, 14], resultCount: feedCount, url: "http://localhost:3000/topics/feed?time="+getDate(17).getTime(), results: [19, 18, 17, 13, 12, 11, 10]},
+    {index: 0, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(20).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 5, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(15).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 10, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(10).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 0, subscribed: [2], resultCount: feedCount, url: baseUrl+getDate(20).getTime(), results: [0, 1, 3, 4, 5, 6, 7]},
+    {index: 0, subscribed: [0, 1, 2, 3, 4, 5, 6], resultCount: feedCount, url: baseUrl+getDate(20).getTime(), results: [7,8,9,10,11,12,13]},
+    {index: 3, subscribed: [4,5,6], resultCount: feedCount, url: baseUrl+getDate(17).getTime(), results: [0, 1, 2, 3, 7, 8, 9]},
 ];
 
 let topics ;
 
 describe("Test topic feed", function() {
-    beforeEach("before(), prepare data ...", (done) => {
-        User.deleteMany({}).exec()
-        .then(() => {
-            return Topic.deleteMany({}).exec();
-        })
+    before("before(), prepare data ...", (done) => {
+        baseTime = Date.now();
+
+        Topic.deleteMany({}).exec()
         .then((r) => {
             return Topic.insertMany(genData(20))
         })
@@ -74,7 +73,7 @@ describe("Test topic feed", function() {
 
     cases.forEach((c) => {
         it("should get "+c.resultCount+" items", (done) => {
-            Promise.resolve(1)
+            User.deleteMany({}).exec()
             .then(() => {
                 let subs = [];
                 for(let s of c.subscribed){
@@ -83,10 +82,11 @@ describe("Test topic feed", function() {
                 return User.create({name: "Jason", subscribed: subs});
             })
             .then(()=>{
-                return requestP(url);
+                return requestP(c.url);
             })
             .then((result) => {
                 let data = JSON.parse(result.body).data;
+                console.log(data);
                 should(data.length).be.exactly(c.resultCount);
                 for(let i=0; i< data.length; i++){
                     should(data[i].title).be.exactly("Topic "+c.results[i]);
