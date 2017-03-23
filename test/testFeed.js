@@ -56,20 +56,6 @@ let cases = [
 ];
 
 
-let baseUrl2 = "http://localhost:3000/topics/feed2?lastTime={lastTime}&subCount={subCount}";
-/**
- *
- * */
-let cases2 = [
-    {index: 0, subscribed: [], resultCount: 0, results: []},
-    {index: 5, subscribed: [], resultCount: feedCount, results: [0, 1, 2, 3, 4]},
-    {index: 10, subscribed: [], resultCount: feedCount, results: [0, 1, 2, 3, 4, 5, 6]},
-    {index: 0, subscribed: [2], resultCount: feedCount, results: [7]},
-    {index: 0, subscribed: [0, 1, 2, 3, 4, 5, 6], resultCount: feedCount, results: [7,8,9,10,11,12,13]},
-    {index: 3, subscribed: [], resultCount: feedCount, results: [0, 1, 2]},
-    {index: 3, subscribed: [3,5,7,8], resultCount: feedCount, results: [0, 1, 2, 10]},
-];
-
 
 let topics ;
 
@@ -94,7 +80,7 @@ describe.skip("Test topic feed", function() {
             .then(() => {
                 let subs = [];
                 for(let s of c.subscribed){
-                    subs.push(topics[s]._doc._id);
+                    subs.push({_id: topics[s]._doc._id, updatedAt: new Date()});
                 }
                 return User.create({name: "Jason", subscribed: subs});
             })
@@ -117,6 +103,23 @@ describe.skip("Test topic feed", function() {
     });
 });
 
+
+
+let baseUrl2 = "http://localhost:3000/topics/feed2?lastTime={lastTime}&subCount={subCount}";
+/**
+ *
+ * */
+let cases2 = [
+    {index: 0, subscribed: [], resultCount: 0, results: []},
+    {index: 5, subscribed: [], resultCount: 5, results: [0, 1, 2, 3, 4]},
+    {index: 10, subscribed: [], resultCount: feedCount, results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 0, subscribed: [2], resultCount: 1, results: [7]},
+    {index: 0, subscribed: [0, 1, 2, 3, 4, 5, 6], resultCount: feedCount, results: [7,8,9,10,11,12,13]},
+    {index: 3, subscribed: [], resultCount: 3, results: [0, 1, 2]},
+    {index: 3, subscribed: [3,5,7,8], resultCount: 4, results: [0, 1, 2, 10]},
+];
+
+
 describe("Test topic feed2", function() {
     before("before(), prepare data ...", (done) => {
         baseTime = Date.now();
@@ -131,18 +134,18 @@ describe("Test topic feed2", function() {
             })
     });
 
-    cases.forEach((c) => {
+    cases2.forEach((c) => {
         it("should get "+c.resultCount+" items", (done) => {
             User.deleteMany({}).exec()
                 .then(() => {
                     let subs = [];
                     for(let s of c.subscribed){
-                        subs.push(topics[s]._doc._id);
+                        subs.push({_id: topics[s]._doc._id, updatedAt: new Date()});
                     }
                     return User.create({name: "Jason", subscribed: subs});
                 })
                 .then(()=>{
-                    let url = baseUrl2.replace("{lastTime}", getDate(c.index)).replace("{subCount}", c.subscribed.length);
+                    let url = baseUrl2.replace("{lastTime}", ''+getDate(c.index).getTime()).replace("{subCount}", ''+c.subscribed.length);
                     return requestP(url);
                 })
                 .then((result) => {

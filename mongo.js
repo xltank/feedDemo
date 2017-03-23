@@ -42,7 +42,8 @@ let Topic = mongo.model("Topic", TopicSchema);
 
 let UserObj = {
     name: {type: String},
-    subscribed: [{type: mongo.Schema.Types.ObjectId, ref: "Topic"}],
+    // subscribed: [{type: mongo.Schema.Types.ObjectId, ref: "Topic"}],
+    subscribed: [{_id: {type: mongo.Schema.Types.ObjectId}, updatedAt: {type: Date}}],
     createdAt: {type: Date, default: Date.now},
     updatedAt: {type: Date, default: Date.now}
 };

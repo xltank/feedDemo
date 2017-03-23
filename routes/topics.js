@@ -12,8 +12,6 @@ let router = require('express').Router(),
     User = mongo.User,
     Promise = require('bluebird');
 
-let feedUrlPattern = apiUrl + "/topics/feed?lastTime={lastTime}";
-
 
 /**
  * Just return top-n, exclude subscribed ones, NOT replacing them in place.
@@ -34,8 +32,13 @@ function getFeed(req, res, next){
     User.findOne({_id: req.user.id})
         .then((user) => {
             let subscribed = user.subscribed;
-            if(subscribed && subscribed.length > 0)
-                return Topic.find({_id: {$nin: subscribed}}).limit(count).sort({updatedAt: -1}).exec();
+            console.log(subscribed);
+            let subedIds = [];
+            for(let i=0; i<subscribed.length; i++){
+                subedIds.push(subscribed[i]._id);
+            }
+            if(subedIds && subedIds.length > 0)
+                return Topic.find({_id: {$nin: subedIds}}).limit(count).sort({updatedAt: -1}).exec();
             else
                 return Topic.find({}).limit(count).sort({updatedAt: -1}).exec();
         })
@@ -48,31 +51,39 @@ function getFeed(req, res, next){
 }
 
 
+let feedUrlPattern = apiUrl + "/topics/feed2?lastTime={lastTime}&subCount={subCount}";
+
 /**
- * /topics/feed?lastTime=*&subCount=3
+ * /topics/feed?lastTime=*
  * Get top[count] topics, excludes those user subscribed.
  * @lastTime last request time.
- * @subCount topic count user subscribed this period.
- * @return {status: "OK", data: [{Topic}, ...]; Topics to
+ * @return {status: "OK", data: [{Topic}, ...]}; Topics to
  */
 router.get('/feed2', getFeed2);
 
 function getFeed2(req, res, next){
-    let subCount = req.query.subCount || 0;
     let lastTime = req.query.lastTime;
-    lastTime = lastTime && lastTime.length == 13 ? new Date(parseInt(lastTime)) : new Date();
+    let now = new Date();
+    console.log('-----', lastTime, new Date(parseInt(lastTime)));
+    lastTime = lastTime && lastTime.length == 13 ? new Date(parseInt(lastTime)) : now;
 
-    let subscribed;
+    let subscribed,
+        latestSub,
+        latestSubCount;
 
     User.findOne({_id: req.user.id})
         .then((user) => {
             subscribed = user.subscribed;
+            latestSub = subscribed.filter((s)=>{
+                return s.updatedAt.getTime() > lastTime; // no need to >= because of several latencies.
+            });
+            latestSubCount = latestSub.length;
             return Topic.find({updatedAt: {$gt: lastTime}}).limit(feedCount).sort({updatedAt: -1}).exec();
         })
         .then(function(r){
-            if(subCount > 0 && r.length < subCount){ // replacement mode; new topics are not enough for user subscribed this time.
-                return Topic.find({updatedAt: {$lt: lastTime}, _id: {$nin: subscribed}}).skip(feedCount-subCount)
-                    .limit(subCount-r.length).sort({updatedAt: -1}).exec()
+            if(latestSubCount > 0 && r.length < latestSubCount){ // replacement mode; new topics are not enough for user subscribed this time.
+                return Topic.find({updatedAt: {$lte: lastTime}, _id: {$nin: subscribed}}).skip(feedCount-latestSubCount)
+                    .limit(latestSubCount-r.length).sort({updatedAt: -1}).exec()
                 .then((old)=>{
                     return r.concat(old);
                 })
@@ -82,7 +93,8 @@ function getFeed2(req, res, next){
         })
         .then((result)=>{
             let data = {
-                data: result
+                data: result,
+                refreshUrl: feedUrlPattern.replace('{lastTime', ''+now.getTime())
             };
             next(data);
         })
