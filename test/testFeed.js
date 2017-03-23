@@ -47,17 +47,34 @@ let baseUrl = "http://localhost:3000/topics/feed?time=";
  * when index=3, user subscribed topics[14, 15, 16], 2 new topics[18, 19], and topics[14, 15, 16] should be removed from result.
  * */
 let cases = [
-    {index: 0, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(20).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
-    {index: 5, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(15).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 0, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(0).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 5, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(5).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
     {index: 10, subscribed: [], resultCount: feedCount, url: baseUrl+getDate(10).getTime(), results: [0, 1, 2, 3, 4, 5, 6]},
-    {index: 0, subscribed: [2], resultCount: feedCount, url: baseUrl+getDate(20).getTime(), results: [0, 1, 3, 4, 5, 6, 7]},
-    {index: 0, subscribed: [0, 1, 2, 3, 4, 5, 6], resultCount: feedCount, url: baseUrl+getDate(20).getTime(), results: [7,8,9,10,11,12,13]},
-    {index: 3, subscribed: [4,5,6], resultCount: feedCount, url: baseUrl+getDate(17).getTime(), results: [0, 1, 2, 3, 7, 8, 9]},
+    {index: 0, subscribed: [2], resultCount: feedCount, url: baseUrl+getDate(0).getTime(), results: [0, 1, 3, 4, 5, 6, 7]},
+    {index: 0, subscribed: [0, 1, 2, 3, 4, 5, 6], resultCount: feedCount, url: baseUrl+getDate(0).getTime(), results: [7,8,9,10,11,12,13]},
+    {index: 3, subscribed: [4,5,6], resultCount: feedCount, url: baseUrl+getDate(3).getTime(), results: [0, 1, 2, 3, 7, 8, 9]},
 ];
+
+
+let baseUrl2 = "http://localhost:3000/topics/feed2?lastTime={lastTime}&subCount={subCount}";
+/**
+ *
+ * */
+let cases2 = [
+    {index: 0, subscribed: [], resultCount: 0, results: []},
+    {index: 5, subscribed: [], resultCount: feedCount, results: [0, 1, 2, 3, 4]},
+    {index: 10, subscribed: [], resultCount: feedCount, results: [0, 1, 2, 3, 4, 5, 6]},
+    {index: 0, subscribed: [2], resultCount: feedCount, results: [7]},
+    {index: 0, subscribed: [0, 1, 2, 3, 4, 5, 6], resultCount: feedCount, results: [7,8,9,10,11,12,13]},
+    {index: 3, subscribed: [], resultCount: feedCount, results: [0, 1, 2]},
+    {index: 3, subscribed: [3,5,7,8], resultCount: feedCount, results: [0, 1, 2, 10]},
+];
+
 
 let topics ;
 
-describe("Test topic feed", function() {
+// !!! skiped
+describe.skip("Test topic feed", function() {
     before("before(), prepare data ...", (done) => {
         baseTime = Date.now();
 
@@ -96,6 +113,50 @@ describe("Test topic feed", function() {
             .catch((err) =>{
                 done(err);
             })
+        });
+    });
+});
+
+describe("Test topic feed2", function() {
+    before("before(), prepare data ...", (done) => {
+        baseTime = Date.now();
+
+        Topic.deleteMany({}).exec()
+            .then((r) => {
+                return Topic.insertMany(genData(20))
+            })
+            .then((r) => {
+                topics = r;
+                done();
+            })
+    });
+
+    cases.forEach((c) => {
+        it("should get "+c.resultCount+" items", (done) => {
+            User.deleteMany({}).exec()
+                .then(() => {
+                    let subs = [];
+                    for(let s of c.subscribed){
+                        subs.push(topics[s]._doc._id);
+                    }
+                    return User.create({name: "Jason", subscribed: subs});
+                })
+                .then(()=>{
+                    let url = baseUrl2.replace("{lastTime}", getDate(c.index)).replace("{subCount}", c.subscribed.length);
+                    return requestP(url);
+                })
+                .then((result) => {
+                    let data = JSON.parse(result.body).data;
+                    console.log(data);
+                    should(data.length).be.exactly(c.resultCount);
+                    for(let i=0; i< data.length; i++){
+                        should(data[i].title).be.exactly("Topic "+c.results[i]);
+                    }
+                    done();
+                })
+                .catch((err) =>{
+                    done(err);
+                })
         });
     });
 });

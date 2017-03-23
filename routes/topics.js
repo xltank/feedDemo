@@ -29,7 +29,7 @@ router.get('/feed', getFeed);
 function getFeed(req, res, next){
     let count = req.query.count ? req.query.count : feedCount;
     let time = req.query.time || Date.now();
-    time = time && time.length == 13 ? new Date(parseInt(time)) : new Date(); // quietly use Date.now() when time is invalid/illegal.
+    time = time && time.length == 13 ? new Date(parseInt(time)) : new Date();
 
     User.findOne({_id: req.user.id})
         .then((user) => {
@@ -49,26 +49,40 @@ function getFeed(req, res, next){
 
 
 /**
- * /topics/feed?time=*&count=7
+ * /topics/feed?lastTime=*&subCount=3
  * Get top[count] topics, excludes those user subscribed.
  * @lastTime last request time.
- * @count count limit.
+ * @subCount topic count user subscribed this period.
+ * @return {status: "OK", data: [{Topic}, ...]; Topics to
  */
-router.post('/feed', getFeed);
+router.get('/feed2', getFeed2);
 
 function getFeed2(req, res, next){
-    let count = req.query.count ? req.query.count : feedCount;
-
+    let subCount = req.query.subCount || 0;
+    let lastTime = req.query.lastTime;
     lastTime = lastTime && lastTime.length == 13 ? new Date(parseInt(lastTime)) : new Date();
+
+    let subscribed;
 
     User.findOne({_id: req.user.id})
         .then((user) => {
-            let subscribed = user.subscribed;
-            return Topic.find({_id: {$nin: subscribed}}).limit(count).sort({updatedAt: -1}).exec();
+            subscribed = user.subscribed;
+            return Topic.find({updatedAt: {$gt: lastTime}}).limit(feedCount).sort({updatedAt: -1}).exec();
         })
         .then(function(r){
+            if(subCount > 0 && r.length < subCount){ // replacement mode; new topics are not enough for user subscribed this time.
+                return Topic.find({updatedAt: {$lt: lastTime}, _id: {$nin: subscribed}}).skip(feedCount-subCount)
+                    .limit(subCount-r.length).sort({updatedAt: -1}).exec()
+                .then((old)=>{
+                    return r.concat(old);
+                })
+            }
+            // refresh mode; return new topics directly.
+            return r;
+        })
+        .then((result)=>{
             let data = {
-                data: r
+                data: result
             };
             next(data);
         })
