@@ -18,5 +18,7 @@ Topic.find({_id: {$nin: subscribed}, updatedAt: {$gt: time}}).limit(count).sort(
 2, count >= n，返回记录数：n；
 其中，count 为 top-n 集合减去 subscribed 集合后的数量；
 
+详细情况参见代码/测试的注释
+
 
 P.S.: 之前的 commit 理解有误：以为需要在返回结果中剔除上次返回的 topic，因此在结果中返回了 refreshUrl 来记录上次请求的时间，以便剔除上次请求的结果。
